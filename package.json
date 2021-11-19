@@ -1,0 +1,25 @@
+{
+  "name": "puppet-IDP",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pm2": "pm2 start ecosystem.config.js",
+    "start": "node main.js",
+    "dev": "nodemon --inspect main.js"
+  },
+  "author": "wzzhaoyi <wzzhaoyi@outlook.com>",
+  "description": "",
+  "keywords": [
+    "IDP",
+    "headless browser"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^11.0.0",
+    "request": "^2.88.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  }
+}
