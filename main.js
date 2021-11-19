@@ -1,12 +1,10 @@
 const puppeteer = require('puppeteer');
+const path = require('path')
 const pup = require('./lib/pup')
 const config = require('./config')
 const cmd = require('./lib/cmd')
-const file = require('./lib/file')
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(() => resolve(), ms))
-}
+const file = require('./lib/file');
+const fs = require('fs');
 
 let browsers = []
 let meta = {
@@ -15,16 +13,34 @@ let meta = {
   download: [],
   error: []
 }
-function writeError(msg) {
+
+// load root path
+if (!config.root) {
+  config.root = __dirname + path.sep + 'runs'
+  file.createFolder(config.root)
+}
+let workDir = config.root + path.sep + config.searchContext
+let logDir = workDir + path.sep + 'log.txt'
+
+function writeLog(msg) {
   console.log(msg)
+  file.storeLog(msg + '\n', logDir)
   meta.error.push(msg)
 }
-let workDir = config.root + '/test'
 
 const main = async () => {
   // create folder
   // clean folder
-  file.createFolder(workDir, () => file.cleanFolder(workDir))
+  fs.mkdir(workDir, (error) => {
+    if (error) {
+      console.log('Fail to mkdir:', error)
+    }
+  })
+  fs.writeFile(logDir, `Search For ${config.searchContext} ${new Date()} \n`, (error) => {
+    if (error) {
+      console.log('Fail to create log file:', error)
+    }
+  })
 
   // create browsers
   browsers = await pup.listBrowsers(config.browserNumber, config.browserOption);
@@ -49,7 +65,7 @@ const main = async () => {
     await search_btn.click()
     await homePage.waitForSelector('.thumb')
   } catch (error) {
-    writeError(`Error in first page:${error}`)
+    writeLog(`Error in first page:${error}`)
   }
 
   // get query page and current page result
@@ -61,7 +77,7 @@ const main = async () => {
       try {
         await homePage.goto(pages[idx], { waitUntil: 'networkidle2' })
       } catch (error) {
-        writeError(`Error in ${idx + 2} page:${error}`)
+        writeLog(`Error in ${idx + 2} page:${error}`)
       }
     }
     let res = await cmd.getCurItems(homePage)
@@ -70,12 +86,12 @@ const main = async () => {
       // open  page
       let page = await browsers[Math.floor(Math.random() * config.browserNumber)].newPage();
       try {
-        await page.goto(`${item}`, { timeout: 10000, waitUntil: 'networkidle2' })
-        let info = await cmd.getMetaInfo(page, workDir)
+        await page.goto(`${item}`, { timeout: config.timeout ? config.timeout : 30000, waitUntil: 'networkidle2' })
+        let info = await cmd.getMetaInfo(page, workDir, logDir)
         meta.download.push(info)
         await page.close()
       } catch (error) {
-        writeError(`Fail to load ${item}:${error}`)
+        writeLog(`Fail to load ${item}:${error}`)
         await page.close()
       }
     }
@@ -85,7 +101,7 @@ const main = async () => {
 }
 
 main().catch((e) => {
-  writeError(`Error in Search Page:${e}`)
+  writeLog(`Error in Search Page:${e}`)
 }).finally(async () => {
   await pup.closeBrowsers(browsers);
   file.storeLog(JSON.stringify(meta), `${workDir}/meta.json`)
